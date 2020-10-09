@@ -1,0 +1,65 @@
+# Data Settings
+DataRoot: /mnt/data/yuanfang/Dataset/ISIC2018/
+Data_CLASSES: ['MEL','NV','BCC','AKIEC','BKL','DF','VASC']
+TrainFold: ./core/data/train_index.csv
+ValidFold: ./core/data/val_index.csv
+TestFold: ./core/data/test_index.csv
+description: DC_MT_SRC
+
+# Gcn Settings
+gcn_start_epoch: 20
+gcn_feature_dim: 1024
+gcn_hidden_dim: 512
+
+# Training Settings
+gcn_weight: 0
+src_weight: 1.0
+attention_weight: 1.0
+
+deterministic: True
+seed: 6081
+n_fold: 10
+label_fold: [0]
+GPUs: [0]
+num_workers: 8
+batchsize: 64
+label_bs: 16
+ema_decay: 0.999
+
+# Visulization Settings
+display_freq: 10
+display_ncols: 2
+display_id: 1
+display_winsize: 256
+display_server: http://localhost
+display_port: 8097
+display_env: main
+update_html_freq: 100
+
+# Optimizer settings
+optim: Adam
+lr: 0.0001
+momentum: 0.9
+nesterov: False
+weight_decay: 0.0005
+
+# Model Settings
+arch: se_resnet50
+Using_pretrained_weights: True
+in_channels: 3
+img_size: 256
+lr_decay_freq: 10
+lr_decay: 0.8
+num_epoch: 70
+print_freq: 20
+valid_freq: 1
+save_model_freq: 1
+SaveFolderName: 'mean_teacher'
+Cls:
+  resume:
+
+### Consistency Loss settings
+consistency_cls: 5
+consistency_att: 1
+consistency_rampup: 50
+
