@@ -36,7 +36,7 @@ def get_current_consistency_cls_weight(epoch, config):
 
 def get_current_consistency_att_weight(epoch, config):
     # Consistency ramp-up from https://arxiv.org/abs/1610.02242
-    if epoch < config['consistency_start_epoch']:
+    if epoch < 20:
         return 0.0
     else:
         return config['consistency_att'] * sigmoid_rampup(epoch, config['consistency_rampup'], type='att')
@@ -157,11 +157,10 @@ def train_net(visualizer, optimizer, gcn_optimizer, train_loader, val_loader, mo
 
     for epoch in range(1, config['num_epoch']+1):
         adjust_learning_rate(optimizer, epoch - 1, config['num_epoch'], config['lr'], config['lr_decay_freq'], lr_decay)
-        adjust_learning_rate(gcn_optimizer, epoch - 21, config['num_epoch'], config['lr'], config['lr_decay_freq'], lr_decay)
 
         train(visualizer, train_loader, model, optimizer, gcn_optimizer, epoch, config, cls_criterion)
 
-        if (epoch) % config['valid_freq'] == 0:
+        if epoch % config['valid_freq'] == 0:
             best_metric_dict = valid_net(val_loader, model, config, best_metric_dict, epoch)
             logging.info('Valid-Cls: Best ACC   update to: {:.4f}, from Epoch {}'.format(best_metric_dict['acc'], best_metric_dict['acc_epoch']))
             logging.info('Valid-Cls: Best BAC   update to: {:.4f}'.format(best_metric_dict['bac']))
@@ -231,11 +230,19 @@ def valid_net(val_loader, model, config, best_metric_dict, epoch):
     print_result('Valid-Cls: F1  for All Classes: ', all_f1_gcn, config['Data_CLASSES'])
     print_result('Valid-Cls: recall for All Classes: ', all_recall_gcn, config['Data_CLASSES'])
 
-    m_acc = max(m_acc_s, m_acc_t, m_acc_gcn)
-    m_recall = max(m_recall_s, m_recall_t, m_recall_gcn)
-    m_bac = max(m_bac_s, m_bac_t, m_bac_gcn)
-    m_auc = max(m_auc_s, m_auc_t, m_auc_gcn)
-    m_f1 = max(m_f1_s, m_f1_t, m_f1_gcn)
+    # m_acc = max(m_acc_s, m_acc_t, m_acc_gcn)
+    # m_recall = max(m_recall_s, m_recall_t, m_recall_gcn)
+    # m_bac = max(m_bac_s, m_bac_t, m_bac_gcn)
+    # m_auc = max(m_auc_s, m_auc_t, m_auc_gcn)
+    # m_f1 = max(m_f1_s, m_f1_t, m_f1_gcn)
+    # m_tiou = max(mTIOU_s, mTIOU_t)
+    # m_tior = max(mTIOR_s, mTIOR_t)
+
+    m_acc =  m_acc_gcn
+    m_recall =  m_recall_gcn
+    m_bac =  m_bac_gcn
+    m_auc =  m_auc_gcn
+    m_f1 = m_f1_gcn
     m_tiou = max(mTIOU_s, mTIOU_t)
     m_tior = max(mTIOR_s, mTIOR_t)
 
@@ -265,6 +272,7 @@ def valid_net(val_loader, model, config, best_metric_dict, epoch):
         save_checkpoint(TeacherModel, 'T_fold' + str(config['label_fold']) + '_' + config['arch'], epoch, config['base_dir'], _best='f1', best=m_f1_t)
         save_checkpoint(GCNModel, 'G_fold' + str(config['label_fold']) + '_' + config['arch'], epoch, config['base_dir'], _best='f1', best=m_f1_gcn)
         best_metric_dict['f1'] = m_f1
+
     if m_tiou >= best_metric_dict['tiou']:
         save_checkpoint(StudentModel, 'S_fold' + str(config['label_fold']) + '_' + config['arch'], epoch, config['base_dir'], _best='tiou', best=mTIOU_s)
         save_checkpoint(TeacherModel, 'T_fold' + str(config['label_fold']) + '_' + config['arch'], epoch, config['base_dir'], _best='tiou', best=mTIOU_t)
@@ -296,8 +304,8 @@ def train(visualizer, train_loader, model, optimizer, gcn_optimizer, epoch, conf
 
     num_classes = len(config['Data_CLASSES'])
 
-    StudentModel.train()
-    TeacherModel.train()
+    StudentModel.eval()
+    TeacherModel.eval()
     GCNModel.train()
     end = time.time()
 
@@ -331,9 +339,9 @@ def train(visualizer, train_loader, model, optimizer, gcn_optimizer, epoch, conf
             visual_ret['input'] = image1
             masks_vis = visual_masks(masks1, im_h, im_w)
             visual_ret['mask'] = masks_vis
-
-            output_s, cam_refined_s, feature_s = StudentModel(image1)
-            output_t, cam_refined_t, feature_t = TeacherModel(image2)
+            with torch.no_grad():
+                output_s, cam_refined_s, feature_s = StudentModel(image1)
+                output_t, cam_refined_t, feature_t = TeacherModel(image2)
 
             # StudentFeatureQueue.enqueue(feature_s, label)
             # TeacherFeatureQueue.enqueue(feature_s, label)
@@ -385,12 +393,7 @@ def train(visualizer, train_loader, model, optimizer, gcn_optimizer, epoch, conf
             gcn_probe = torch.softmax(output_gcn, dim=1)
             gcn_cls_loss = cls_criterion(torch.log(gcn_probe[:label_bs]), label[:label_bs])*config['gcn_weight']
 
-            # GCN Classification Consistency
-            # gcn_consistency_loss_cls = consistency_weight_att * consistency_criterion_cls(output_gcn, output_gcn_t)*config['gcn_weight']
-
-            total_loss = loss_cls * cls_loss + (loss_masks * mask_loss + loss_bound * bound_loss)*config['attention_weight']
-            if epoch >= config['consistency_start_epoch']:
-                total_loss = total_loss + consistency_loss_cls + consistency_loss_att + src_loss + gcn_cls_loss
+            total_loss = gcn_cls_loss
 
             errors_ret['ClsLoss'] = float(cls_loss)
             errors_ret['AttMseLoss'] = float(mask_loss)
@@ -410,21 +413,13 @@ def train(visualizer, train_loader, model, optimizer, gcn_optimizer, epoch, conf
             src_losses.update(src_loss.item(), bs)
             gcn_cls_losses.update(gcn_cls_loss.item(), bs)
 
-            if epoch >= config['consistency_start_epoch']:
-                optimizer.zero_grad()
-                gcn_optimizer.zero_grad()
-                total_loss.backward()
-                gcn_optimizer.step()
-                optimizer.step()
-            else:
-                optimizer.zero_grad()
-                # gcn_optimizer.zero_grad()
-                total_loss.backward()
-                # gcn_optimizer.step()
-                optimizer.step()
+            gcn_optimizer.zero_grad()
+            total_loss.backward()
+            gcn_optimizer.step()
 
             global_step += 1
-            update_ema_variables(StudentModel, TeacherModel, config['ema_decay'], global_step)
+            # update_ema_variables(StudentModel, TeacherModel, config['ema_decay'], global_step)
+            # update_ema_variables(GCNStudentModel, GCNTeacherModel, config['ema_decay'], global_step)
 
             m_acc, _ = calculate_acc(probe.cpu().detach().numpy(), label.cpu().detach().numpy(), config)
             cls_accs.update(m_acc, bs)
@@ -440,7 +435,6 @@ def train(visualizer, train_loader, model, optimizer, gcn_optimizer, epoch, conf
             if i % config['print_freq'] == 0:
                 logging.info('Epoch: [{}][{}/{}]\t'
                              'Lr: {:.5f} '
-                             'GCNLr: {:.5f} '
                              'ConsistencyWeightAtt: {:.4f} '
                              'ClsAcc: {cls_acc.val:.4f} ({cls_acc.avg:.4f}) '
                              'ClsAccg: {cls_accg.val:.4f} ({cls_accg.avg:.4f}) '
@@ -452,7 +446,7 @@ def train(visualizer, train_loader, model, optimizer, gcn_optimizer, epoch, conf
                              'ConsisAttLoss: {conatt_loss.val:.4f} ({conatt_loss.avg:.4f}) '
                              'SRCLoss: {src_loss.val:.4f} ({src_loss.avg:.4f}) '
                              'GCNClsLoss: {gcn_cls_loss.val:.4f} ({gcn_cls_loss.avg:.4f}) '.format(
-                                 epoch, i, len(train_loader), optimizer.param_groups[0]['lr'], gcn_optimizer.param_groups[0]['lr'], consistency_weight_att, cls_acc=cls_accs, cls_accg=cls_accs_gcn, loss=losses, cls_loss=cls_losses, attmse_loss=attmse_losses,
+                                 epoch, i, len(train_loader), optimizer.param_groups[0]['lr'], consistency_weight_att, cls_acc=cls_accs, cls_accg=cls_accs_gcn, loss=losses, cls_loss=cls_losses, attmse_loss=attmse_losses,
                                  attbnd_loss=attbound_losses, concls_loss=consiscls_losses, conatt_loss=consisatt_losses, src_loss=src_losses, gcn_cls_loss=gcn_cls_losses))
 
                 if config['display_id'] > 0:

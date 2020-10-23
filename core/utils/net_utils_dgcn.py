@@ -157,7 +157,7 @@ def train_net(visualizer, optimizer, gcn_optimizer, train_loader, val_loader, mo
 
     for epoch in range(1, config['num_epoch']+1):
         adjust_learning_rate(optimizer, epoch - 1, config['num_epoch'], config['lr'], config['lr_decay_freq'], lr_decay)
-        adjust_learning_rate(gcn_optimizer, epoch - 21, config['num_epoch'], config['lr'], config['lr_decay_freq'], lr_decay)
+        # adjust_learning_rate(gcn_optimizer, epoch - 21, config['num_epoch'], config['lr'], config['lr_decay_freq'], lr_decay)
 
         train(visualizer, train_loader, model, optimizer, gcn_optimizer, epoch, config, cls_criterion)
 
@@ -174,7 +174,7 @@ def train_net(visualizer, optimizer, gcn_optimizer, train_loader, val_loader, mo
 
 def valid_net(val_loader, model, config, best_metric_dict, epoch):
     result_s, result_t, result_gcn, TIOU, TIOR = valid(val_loader, model, config)
-    StudentModel, TeacherModel, GCNModel = model
+    StudentModel, TeacherModel, GCNStudentModel, GCNTeacherModel = model
     m_acc_s, all_acc_s, m_auc_s, all_auc_s, m_recall_s, all_recall_s, m_f1_s, all_f1_s, m_bac_s, all_bac_s = result_s
     m_acc_t, all_acc_t, m_auc_t, all_auc_t, m_recall_t, all_recall_t, m_f1_t, all_f1_t, m_bac_t, all_bac_t = result_t
     m_acc_gcn, all_acc_gcn, m_auc_gcn, all_auc_gcn, m_recall_gcn, all_recall_gcn, m_f1_gcn, all_f1_gcn, m_bac_gcn, all_bac_gcn = result_gcn
@@ -242,28 +242,28 @@ def valid_net(val_loader, model, config, best_metric_dict, epoch):
     if m_acc > best_metric_dict['acc']:
         save_checkpoint(StudentModel, 'S_fold' + str(config['label_fold']) + '_' + config['arch'], epoch, config['base_dir'], _best='acc', best=m_acc_s)
         save_checkpoint(TeacherModel, 'T_fold' + str(config['label_fold']) + '_' + config['arch'], epoch, config['base_dir'], _best='acc', best=m_acc_t)
-        save_checkpoint(GCNModel, 'G_fold' + str(config['label_fold']) + '_' + config['arch'], epoch, config['base_dir'], _best='acc', best=m_acc_gcn)
+        save_checkpoint(GCNStudentModel, 'G_fold' + str(config['label_fold']) + '_' + config['arch'], epoch, config['base_dir'], _best='acc', best=m_acc_gcn)
         best_metric_dict['acc'] = m_acc
         best_metric_dict['acc_epoch'] = epoch
     if m_recall >= best_metric_dict['recall']:
         save_checkpoint(StudentModel, 'S_fold' + str(config['label_fold']) + '_' + config['arch'], epoch, config['base_dir'], _best='recall', best=m_recall_s)
         save_checkpoint(TeacherModel, 'T_fold' + str(config['label_fold']) + '_' + config['arch'], epoch, config['base_dir'], _best='recall', best=m_recall_t)
-        save_checkpoint(GCNModel, 'G_fold' + str(config['label_fold']) + '_' + config['arch'], epoch, config['base_dir'], _best='recall', best=m_recall_gcn)
+        save_checkpoint(GCNStudentModel, 'G_fold' + str(config['label_fold']) + '_' + config['arch'], epoch, config['base_dir'], _best='recall', best=m_recall_gcn)
         best_metric_dict['recall'] = m_recall
     if m_bac >= best_metric_dict['bac']:
         save_checkpoint(StudentModel, 'S_fold' + str(config['label_fold']) + '_' + config['arch'], epoch, config['base_dir'], _best='bac', best=m_recall_s)
         save_checkpoint(TeacherModel, 'T_fold' + str(config['label_fold']) + '_' + config['arch'], epoch, config['base_dir'], _best='bac', best=m_recall_t)
-        save_checkpoint(GCNModel, 'G_fold' + str(config['label_fold']) + '_' + config['arch'], epoch, config['base_dir'], _best='bac', best=m_recall_gcn)
+        save_checkpoint(GCNStudentModel, 'G_fold' + str(config['label_fold']) + '_' + config['arch'], epoch, config['base_dir'], _best='bac', best=m_recall_gcn)
         best_metric_dict['bac'] = m_bac
     if m_auc >= best_metric_dict['auc']:
         save_checkpoint(StudentModel, 'S_fold' + str(config['label_fold']) + '_' + config['arch'], epoch, config['base_dir'], _best='auc', best=m_auc_s)
         save_checkpoint(TeacherModel, 'T_fold' + str(config['label_fold']) + '_' + config['arch'], epoch, config['base_dir'], _best='auc', best=m_auc_t)
-        save_checkpoint(GCNModel, 'G_fold' + str(config['label_fold']) + '_' + config['arch'], epoch, config['base_dir'], _best='auc', best=m_auc_gcn)
+        save_checkpoint(GCNStudentModel, 'G_fold' + str(config['label_fold']) + '_' + config['arch'], epoch, config['base_dir'], _best='auc', best=m_auc_gcn)
         best_metric_dict['auc'] = m_auc
     if m_f1 >= best_metric_dict['f1']:
         save_checkpoint(StudentModel, 'S_fold' + str(config['label_fold']) + '_' + config['arch'], epoch, config['base_dir'], _best='f1', best=m_f1_s)
         save_checkpoint(TeacherModel, 'T_fold' + str(config['label_fold']) + '_' + config['arch'], epoch, config['base_dir'], _best='f1', best=m_f1_t)
-        save_checkpoint(GCNModel, 'G_fold' + str(config['label_fold']) + '_' + config['arch'], epoch, config['base_dir'], _best='f1', best=m_f1_gcn)
+        save_checkpoint(GCNStudentModel, 'G_fold' + str(config['label_fold']) + '_' + config['arch'], epoch, config['base_dir'], _best='f1', best=m_f1_gcn)
         best_metric_dict['f1'] = m_f1
     if m_tiou >= best_metric_dict['tiou']:
         save_checkpoint(StudentModel, 'S_fold' + str(config['label_fold']) + '_' + config['arch'], epoch, config['base_dir'], _best='tiou', best=mTIOU_s)
@@ -279,7 +279,7 @@ def valid_net(val_loader, model, config, best_metric_dict, epoch):
 
 def train(visualizer, train_loader, model, optimizer, gcn_optimizer, epoch, config, cls_criterion):
     global global_step
-    StudentModel, TeacherModel, GCNModel = model
+    StudentModel, TeacherModel, GCNStudentModel, GCNTeacherModel = model
     losses = AverageMeter()
     cls_losses = AverageMeter()
     attmse_losses = AverageMeter()
@@ -298,7 +298,8 @@ def train(visualizer, train_loader, model, optimizer, gcn_optimizer, epoch, conf
 
     StudentModel.train()
     TeacherModel.train()
-    GCNModel.train()
+    GCNStudentModel.train()
+    GCNTeacherModel.train()
     end = time.time()
 
     StudentFeatureQueue = FeatureQueue(config, 2)
@@ -338,7 +339,8 @@ def train(visualizer, train_loader, model, optimizer, gcn_optimizer, epoch, conf
             # StudentFeatureQueue.enqueue(feature_s, label)
             # TeacherFeatureQueue.enqueue(feature_s, label)
 
-            output_gcn = GCNModel(feature_s, feature_t)
+            output_feature_gcns, output_gcns = GCNStudentModel(feature_s, feature_s)
+            output_feature_gcnt, output_gcnt = GCNStudentModel(feature_t, feature_t)
 
             class_idx = label.cpu().long().numpy()
             for index, idx in enumerate(class_idx):
@@ -378,19 +380,21 @@ def train(visualizer, train_loader, model, optimizer, gcn_optimizer, epoch, conf
             consistency_loss_cls = consistency_weight_att * consistency_criterion_cls(output_s, output_t)
 
             # SRC Loss
-            consistency_relation_dist = torch.sum(relation_mse_loss(feature_s, feature_t)) / bs
+            consistency_relation_dist = torch.sum(relation_mse_loss(output_feature_gcns, output_feature_gcnt)) / bs
             src_loss = consistency_weight_att * consistency_relation_dist*config['src_weight']
 
             # GCN Classification
-            gcn_probe = torch.softmax(output_gcn, dim=1)
+            gcn_probe = torch.softmax(output_gcns, dim=1)
             gcn_cls_loss = cls_criterion(torch.log(gcn_probe[:label_bs]), label[:label_bs])*config['gcn_weight']
 
             # GCN Classification Consistency
-            # gcn_consistency_loss_cls = consistency_weight_att * consistency_criterion_cls(output_gcn, output_gcn_t)*config['gcn_weight']
+            gcn_consistency_loss_cls = consistency_weight_att * consistency_criterion_cls(output_gcns, output_gcnt)*config['gcn_weight']
 
             total_loss = loss_cls * cls_loss + (loss_masks * mask_loss + loss_bound * bound_loss)*config['attention_weight']
+            if epoch >= config['gcn_start_epoch']:
+                total_loss = total_loss+gcn_cls_loss
             if epoch >= config['consistency_start_epoch']:
-                total_loss = total_loss + consistency_loss_cls + consistency_loss_att + src_loss + gcn_cls_loss
+                total_loss = total_loss + consistency_loss_cls + consistency_loss_att + gcn_consistency_loss_cls
 
             errors_ret['ClsLoss'] = float(cls_loss)
             errors_ret['AttMseLoss'] = float(mask_loss)
@@ -416,6 +420,12 @@ def train(visualizer, train_loader, model, optimizer, gcn_optimizer, epoch, conf
                 total_loss.backward()
                 gcn_optimizer.step()
                 optimizer.step()
+            elif epoch >= config['gcn_start_epoch']:
+                # optimizer.zero_grad()
+                gcn_optimizer.zero_grad()
+                total_loss.backward()
+                gcn_optimizer.step()
+                # optimizer.step()
             else:
                 optimizer.zero_grad()
                 # gcn_optimizer.zero_grad()
@@ -424,7 +434,10 @@ def train(visualizer, train_loader, model, optimizer, gcn_optimizer, epoch, conf
                 optimizer.step()
 
             global_step += 1
-            update_ema_variables(StudentModel, TeacherModel, config['ema_decay'], global_step)
+            if epoch < config['gcn_start_epoch'] or epoch >= config['consistency_start_epoch']:
+                update_ema_variables(StudentModel, TeacherModel, config['ema_decay'], global_step)
+            if epoch >= config['gcn_start_epoch']:
+                update_ema_variables(GCNStudentModel, GCNTeacherModel, config['ema_decay'], global_step)
 
             m_acc, _ = calculate_acc(probe.cpu().detach().numpy(), label.cpu().detach().numpy(), config)
             cls_accs.update(m_acc, bs)
@@ -456,19 +469,18 @@ def train(visualizer, train_loader, model, optimizer, gcn_optimizer, epoch, conf
                                  attbnd_loss=attbound_losses, concls_loss=consiscls_losses, conatt_loss=consisatt_losses, src_loss=src_losses, gcn_cls_loss=gcn_cls_losses))
 
                 if config['display_id'] > 0:
-                    visualizer.plot_current_losses(epoch, float(
-                        i) / float(len(train_loader)), errors_ret)
+                    visualizer.plot_current_losses(epoch, float(i) / float(len(train_loader)), errors_ret)
             if i % config['display_freq'] == 0:
-                visualizer.display_current_results(
-                    visual_ret, class_idx[0], epoch, save_result=False)
+                visualizer.display_current_results(visual_ret, class_idx[0], epoch, save_result=False)
 
 
 def valid(valid_loader, model, config):
-    StudentModel, TeacherModel, GCNModel = model
+    StudentModel, TeacherModel, GCNStudentModel, GCNTeacherModel = model
     batch_time = AverageMeter()
     StudentModel.eval()
     TeacherModel.eval()
-    GCNModel.eval()
+    GCNStudentModel.eval()
+    GCNTeacherModel.eval()
 
     num_classes = len(config['Data_CLASSES'])
     counts = np.zeros(num_classes)
@@ -497,7 +509,8 @@ def valid(valid_loader, model, config):
             # StudentFeatureQueue.enqueue(feature_s, label)
             # TeacherFeatureQueue.enqueue(feature_s, label)
 
-            output_gcn = GCNModel(feature_s, feature_t)
+            output_feature_gcns, output_gcns = GCNStudentModel(feature_s, feature_s)
+            output_feature_gcnt, output_gcnt = GCNStudentModel(feature_t, feature_t)
 
             class_idx = label.cpu().long().numpy()
             for index, idx in enumerate(class_idx):
@@ -515,7 +528,7 @@ def valid(valid_loader, model, config):
 
             probe_s = torch.softmax(output_s, dim=1)
             probe_t = torch.softmax(output_t, dim=1)
-            probe_gcn = torch.softmax(output_gcn, dim=1)
+            probe_gcn = torch.softmax(output_gcns, dim=1)
 
             cam_refined_s = cam_refined_s >= cam_thresh
             cam_refined_t = cam_refined_t >= cam_thresh

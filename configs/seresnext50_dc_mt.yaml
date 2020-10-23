@@ -1,17 +1,21 @@
 # Data Settings
-DataRoot: /mnt/data/yuanfang/Dataset/ISIC2018/
+DataRoot: /mnt/data/yuanfang/DC-MT-SRC/DATA/ISIC2018/
 Data_CLASSES: ['MEL','NV','BCC','AKIEC','BKL','DF','VASC']
 TrainFold: ./core/data/train_index.csv
 ValidFold: ./core/data/val_index.csv
 TestFold: ./core/data/test_index.csv
+base_dir_prev: DC_MT
 description: DC_MT
 
 # Gcn Settings
 gcn_start_epoch: 20
-gcn_feature_dim: 1024
-gcn_hidden_dim: 512
+gcn_feature_dim: 512
+gcn_hidden_dim: 128
+gcn_hidden_num: 2
+gcn_dropout: 0
 
 # Training Settings
+consistency_start_epoch: 20
 gcn_weight: 0
 src_weight: 0
 attention_weight: 1.0
@@ -22,8 +26,8 @@ n_fold: 10
 label_fold: [0]
 GPUs: [3]
 num_workers: 8
-batchsize: 64
-label_bs: 16
+batchsize: 80
+label_bs: 20
 ema_decay: 0.999
 
 # Visulization Settings

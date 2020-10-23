@@ -16,11 +16,14 @@ class MutilHeadGAT(nn.Module):
 
         self.out_att = GraphAttentionLayer(nhid * nheads, nclass, dropout=dropout, alpha=alpha, concat=False)
 
-    def forward(self, x, adj):
+    def forward(self, feature_s,feature_t):
         """
         input: Batch_size*Feature_num
         adj: Batch_size*Batch_size
         """
+        adj = feature_s.mm(feature_t.t())
+        adj = torch.softmax(adj, dim=1)
+        x = torch.cat([feature_s, feature_t], dim=1)
         # x = F.dropout(x, self.dropout, training=self.training)
         x = torch.cat([att(x, adj) for att in self.attentions], dim=1)
         x = F.dropout(x, self.dropout, training=self.training)

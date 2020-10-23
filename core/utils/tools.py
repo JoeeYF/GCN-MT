@@ -25,7 +25,7 @@ cls_thresh = 0.5
 def increment_dir(dir, e=None):
     # Increments a directory runs/exp1 --> runs/exp2_comment
     n = 0  # number
-    d = sorted(glob(dir + '*'))  # directories
+    d = sorted(glob(dir + '[0-9]*'))  # directories
     if len(d):
         n = int(d[-1].split('/')[-1].split('-')[0][-3:]) + 1  # increment
     if e is not None:
@@ -139,12 +139,13 @@ def set_requires_grad(net, fixed_layer, _sgpu=True):
 
 
 def adjust_learning_rate(optimizer, epoch, epoch_num, initial_lr, reduce_epoch, decay=0.1):
-    if reduce_epoch == 'dynamic':
-        lr = initial_lr * (1 - math.pow(float(epoch)/float(epoch_num), power))
-    else:
-        lr = initial_lr * (decay ** (epoch // reduce_epoch))
-    for param_group in optimizer.param_groups:
-        param_group['lr'] = lr
+    if epoch >0:
+        if reduce_epoch == 'dynamic':
+            lr = initial_lr * (1 - math.pow(float(epoch)/float(epoch_num), power))
+        else:
+            lr = initial_lr * (decay ** (epoch // reduce_epoch))
+        for param_group in optimizer.param_groups:
+            param_group['lr'] = lr
 
 
 class AverageMeter(object):
